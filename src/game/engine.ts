@@ -2,7 +2,6 @@ import { ORES, pickOre, type Ore } from "./ores";
 import type { SaveData } from "./storage";
 
 export const TS = 22; // tile size in px
-const WORLD_W = 72; // tiles
 const CHUNK = 16;
 
 const EMPTY = 0;
@@ -74,78 +73,102 @@ function make(w: number, h: number) {
   return c;
 }
 
-function dirtSprite(band: number, v: number, grass: boolean) {
-  const key = `d${band}_${v}_${grass ? 1 : 0}`;
+const PATCH = 8; // tiles per texture patch (keeps texture continuous across tiles)
+
+function dirtPatch(band: number) {
+  const key = `dp${band}`;
   const hit = spriteCache.get(key);
   if (hit) return hit;
-  const c = make(TS, TS);
+  const size = PATCH * TS;
+  const c = make(size, size);
   const g = c.getContext("2d")!;
   const p = BANDS[band]!;
   g.fillStyle = p.base;
-  g.fillRect(0, 0, TS, TS);
-  // speckled texture
-  for (let i = 0; i < 42; i++) {
-    const r = hash2(i * 7 + v * 31, band * 13 + i, 99);
-    const x = Math.floor(hash2(i, v + band, 5) * TS);
-    const y = Math.floor(hash2(i + 40, v * 3 + band, 7) * TS);
-    const s = r > 0.86 ? 3 : r > 0.6 ? 2 : 1;
-    g.fillStyle = r > 0.72 ? p.light : p.dark;
-    g.globalAlpha = 0.55 + r * 0.35;
-    g.fillRect(x, y, s, s);
+  g.fillRect(0, 0, size, size);
+  // broad tonal blotches
+  for (let i = 0; i < 90; i++) {
+    const x = hash2(i, band, 101) * size;
+    const y = hash2(i + 200, band, 103) * size;
+    const w = 6 + hash2(i + 300, band, 107) * 22;
+    const h = 4 + hash2(i + 400, band, 109) * 14;
+    g.globalAlpha = 0.16;
+    g.fillStyle = hash2(i, band, 111) > 0.5 ? p.light : p.dark;
+    g.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
   }
-  g.globalAlpha = 1;
-  // organic clods instead of a tile-shaped bevel
-  for (let i = 0; i < 5; i++) {
-    const x = Math.floor(hash2(i + 70, v * 5 + band, 71) * (TS - 6));
-    const y = Math.floor(hash2(i + 80, v * 7 + band, 73) * (TS - 6));
-    const w = 3 + Math.floor(hash2(i + 90, v + band, 77) * 4);
-    g.fillStyle = hash2(i, v, 79) > 0.5 ? p.dark : p.light;
-    g.globalAlpha = 0.4;
-    g.fillRect(x, y, w, 2);
-    g.fillRect(x, y + 2, Math.max(2, w - 2), 2);
-  }
-  g.globalAlpha = 1;
-  if (grass) {
-    g.fillStyle = "#3f7f2b";
-    g.fillRect(0, 0, TS, 7);
-    g.fillStyle = "#5aa838";
-    g.fillRect(0, 0, TS, 4);
-    g.fillStyle = "#7ccb4d";
-    for (let x = 0; x < TS; x += 2) {
-      const hgt = 1 + Math.floor(hash2(x, v, 3) * 3);
-      g.fillRect(x, 0, 1, hgt);
+  // pebbles & grit
+  for (let i = 0; i < 900; i++) {
+    const x = Math.floor(hash2(i, band, 113) * size);
+    const y = Math.floor(hash2(i + 500, band, 127) * size);
+    const r = hash2(i + 900, band, 131);
+    g.globalAlpha = 0.35 + r * 0.45;
+    g.fillStyle = r > 0.55 ? p.light : p.dark;
+    const sz = r > 0.93 ? 3 : r > 0.7 ? 2 : 1;
+    g.fillRect(x, y, sz, sz);
+    if (r > 0.96) {
+      g.fillStyle = "rgba(0,0,0,0.35)";
+      g.fillRect(x, y + sz, sz, 1);
     }
-    g.fillStyle = "rgba(0,0,0,0.25)";
-    g.fillRect(0, 7, TS, 1);
   }
+  g.globalAlpha = 1;
   spriteCache.set(key, c);
   return c;
 }
 
-function rockSprite(band: number, v: number) {
-  const key = `r${band}_${v}`;
+function rockPatch(band: number) {
+  const key = `rp${band}`;
+  const hit = spriteCache.get(key);
+  if (hit) return hit;
+  const size = PATCH * TS;
+  const c = make(size, size);
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#767a82";
+  g.fillRect(0, 0, size, size);
+  // chunky stone facets
+  for (let i = 0; i < 120; i++) {
+    const x = Math.floor(hash2(i, band, 211) * size);
+    const y = Math.floor(hash2(i + 300, band, 213) * size);
+    const w = 8 + Math.floor(hash2(i + 600, band, 217) * 22);
+    const h = 6 + Math.floor(hash2(i + 900, band, 219) * 16);
+    const r = hash2(i, band, 221);
+    g.fillStyle = r > 0.66 ? "#9aa0a9" : r > 0.33 ? "#83878f" : "#63666d";
+    g.fillRect(x, y, w, h);
+    g.fillStyle = "rgba(255,255,255,0.16)";
+    g.fillRect(x, y, w, 2);
+    g.fillStyle = "rgba(0,0,0,0.22)";
+    g.fillRect(x, y + h - 2, w, 2);
+  }
+  for (let i = 0; i < 700; i++) {
+    const x = Math.floor(hash2(i, band, 223) * size);
+    const y = Math.floor(hash2(i + 400, band, 227) * size);
+    const r = hash2(i + 800, band, 229);
+    g.globalAlpha = 0.4 + r * 0.4;
+    g.fillStyle = r > 0.5 ? "#b3b8c0" : "#4f5257";
+    g.fillRect(x, y, r > 0.94 ? 2 : 1, r > 0.94 ? 2 : 1);
+  }
+  g.globalAlpha = 1;
+  spriteCache.set(key, c);
+  return c;
+}
+
+function grassSprite(v: number) {
+  const key = `g${v}`;
   const hit = spriteCache.get(key);
   if (hit) return hit;
   const c = make(TS, TS);
   const g = c.getContext("2d")!;
-  const p = BANDS[band]!;
-  g.fillStyle = p.dark;
-  g.fillRect(0, 0, TS, TS);
-  g.fillStyle = "#6f7178";
-  g.fillRect(1, 1, TS - 2, TS - 2);
-  g.fillStyle = "#8e9199";
-  g.fillRect(1, 1, TS - 2, TS / 2 - 1);
-  g.fillStyle = "#a8adb6";
-  g.fillRect(2, 2, TS - 6, 3);
-  g.fillStyle = "#54565c";
-  for (let i = 0; i < 16; i++) {
-    const x = Math.floor(hash2(i, v, 11) * (TS - 3));
-    const y = Math.floor(hash2(i + 9, v, 12) * (TS - 3));
-    g.fillRect(x, y, 2, 2);
+  g.fillStyle = "#2f6b22";
+  g.fillRect(0, 0, TS, 9);
+  g.fillStyle = "#3f8a2b";
+  g.fillRect(0, 0, TS, 6);
+  g.fillStyle = "#5cb03a";
+  g.fillRect(0, 0, TS, 3);
+  for (let x = 0; x < TS; x++) {
+    const h = Math.floor(hash2(x, v, 311) * 4);
+    g.fillStyle = hash2(x, v, 313) > 0.5 ? "#7ccb4d" : "#4d9c32";
+    g.fillRect(x, -h + 1, 1, h + 2);
   }
-  g.strokeStyle = "rgba(0,0,0,0.22)";
-  g.lineWidth = 1;
-  g.strokeRect(0.5, 0.5, TS - 1, TS - 1);
+  g.fillStyle = "rgba(0,0,0,0.28)";
+  g.fillRect(0, 9, TS, 2);
   spriteCache.set(key, c);
   return c;
 }
@@ -162,8 +185,8 @@ function gem(
   g.save();
   g.translate(x, y);
   g.rotate(rot);
-  g.fillStyle = "rgba(0,0,0,0.35)";
-  g.fillRect(-s / 2 + 1, -s / 2 + 1, s, s);
+  g.fillStyle = "rgba(0,0,0,0.4)";
+  g.fillRect(-s / 2 + 1.5, -s / 2 + 1.5, s, s);
   g.fillStyle = base;
   g.fillRect(-s / 2, -s / 2, s, s);
   g.fillStyle = dark;
@@ -174,38 +197,36 @@ function gem(
   g.closePath();
   g.fill();
   g.fillStyle = light;
-  g.fillRect(-s / 2 + 1, -s / 2 + 1, s * 0.45, s * 0.45);
+  g.fillRect(-s / 2 + 1, -s / 2 + 1, s * 0.48, s * 0.48);
   g.fillStyle = spark;
-  g.fillRect(-s / 2 + 1, -s / 2 + 1, Math.max(1, s * 0.2), Math.max(1, s * 0.2));
-  g.strokeStyle = "rgba(0,0,0,0.55)";
+  g.fillRect(-s / 2 + 1.5, -s / 2 + 1.5, Math.max(1, s * 0.22), Math.max(1, s * 0.22));
+  g.strokeStyle = "rgba(0,0,0,0.5)";
   g.lineWidth = 1;
   g.strokeRect(-s / 2 + 0.5, -s / 2 + 0.5, s - 1, s - 1);
   g.restore();
 }
 
-function oreSprite(oreIdx: number, band: number, v: number) {
-  const key = `o${oreIdx}_${band}_${v}`;
+/** Transparent gem-cluster overlay drawn on top of the dirt texture. */
+function oreSprite(oreIdx: number, v: number) {
+  const key = `o${oreIdx}_${v}`;
   const hit = spriteCache.get(key);
   if (hit) return hit;
   const o = ORES[oreIdx]!;
   const c = make(TS, TS);
   const g = c.getContext("2d")!;
-  g.drawImage(dirtSprite(band, v, false), 0, 0);
+  if (o.hardness >= 4) {
+    const rg = g.createRadialGradient(TS / 2, TS / 2, 1, TS / 2, TS / 2, TS * 0.7);
+    rg.addColorStop(0, o.colors[2] + "55");
+    rg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = rg;
+    g.fillRect(0, 0, TS, TS);
+  }
   const n = 3 + Math.floor(hash2(v, oreIdx, 21) * 3);
   for (let i = 0; i < n; i++) {
     const x = 5 + hash2(i, v + oreIdx, 31) * (TS - 10);
     const y = 5 + hash2(i + 5, v * 2 + oreIdx, 41) * (TS - 10);
-    const s = 4 + hash2(i + 11, v + oreIdx, 51) * 5;
-    gem(g, x, y, s, o, (hash2(i + 3, v, 61) - 0.5) * 0.8);
-  }
-  // glow for deep tiers
-  if (o.hardness >= 4) {
-    g.globalCompositeOperation = "lighter";
-    g.globalAlpha = 0.18;
-    g.fillStyle = o.colors[2];
-    g.fillRect(0, 0, TS, TS);
-    g.globalAlpha = 1;
-    g.globalCompositeOperation = "source-over";
+    const sz = 5 + hash2(i + 11, v + oreIdx, 51) * 6;
+    gem(g, x, y, sz, o, (hash2(i + 3, v, 61) - 0.5) * 0.9);
   }
   spriteCache.set(key, c);
   return c;
@@ -240,16 +261,15 @@ class World {
       for (let i = 0; i < CHUNK; i++) {
         const tx = cx * CHUNK + i;
         let t: number = DIRT;
-        if (tx < 0 || tx >= WORLD_W) t = BEDROCK;
-        else if (ty < 0) t = EMPTY;
+        if (ty < 0) t = EMPTY;
         else if (ty === 0) t = GRASS;
         else {
           const depth = ty;
           const cave = valueNoise(tx * 0.13, ty * 0.11, s);
           if (cave > 0.74 && depth > 6) t = EMPTY;
           const rockN = valueNoise(tx * 0.09 + 40, ty * 0.08 + 90, s + 3);
-          const rockChance = 0.62 - Math.min(0.16, depth / 30000);
-          if (t === DIRT && rockN > rockChance && depth > 14) t = ROCK;
+          const rockChance = 0.76 - Math.min(0.14, depth / 40000);
+          if (t === DIRT && rockN > rockChance && depth > 26) t = ROCK;
           const lavaN = valueNoise(tx * 0.07 - 60, ty * 0.06 - 20, s + 7);
           const lavaThresh = 0.86 - Math.min(0.16, depth / 12000);
           if (depth > 45 && lavaN > lavaThresh) t = LAVA;
@@ -285,8 +305,15 @@ class World {
     }
   }
 
+  prune(cx: number, cy: number) {
+    if (this.chunks.size < 900) return;
+    for (const k of this.chunks.keys()) {
+      const [a, b] = k.split(",").map(Number) as [number, number];
+      if (Math.abs(a - cx) > 8 || Math.abs(b - cy) > 8) this.chunks.delete(k);
+    }
+  }
+
   get(tx: number, ty: number) {
-    if (tx < 0 || tx >= WORLD_W) return BEDROCK;
     if (ty < 0) return EMPTY;
     const cx = Math.floor(tx / CHUNK);
     const cy = Math.floor(ty / CHUNK);
@@ -295,7 +322,7 @@ class World {
   }
 
   set(tx: number, ty: number, v: number) {
-    if (tx < 0 || tx >= WORLD_W || ty < 0) return;
+    if (ty < 0) return;
     const cx = Math.floor(tx / CHUNK);
     const cy = Math.floor(ty / CHUNK);
     const c = this.chunk(cx, cy);
@@ -346,7 +373,7 @@ export function createGame(
   const world = new World();
 
   const p = {
-    x: (WORLD_W / 2) * TS,
+    x: 0,
     y: -30,
     vx: 0,
     vy: 0,
@@ -631,7 +658,6 @@ export function createGame(
     magnet();
 
     p.rot += (p.vx * dt) / p.r;
-    p.x = Math.max(TS + p.r, Math.min(p.x, (WORLD_W - 1) * TS - p.r));
 
     maxDepth = Math.max(maxDepth, Math.floor(p.y / TS));
     burnCd -= dt;
@@ -756,7 +782,7 @@ export function createGame(
       ctx.fillStyle = bg.dark;
       const top = Math.max(0, surfaceY);
       ctx.fillRect(0, top, W, H - top);
-      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
       ctx.fillRect(0, top, W, H - top);
     }
 
@@ -790,11 +816,15 @@ export function createGame(
           ctx.fillRect(dx + 2, dy + 2, TS - 4, TS - 4);
           continue;
         }
-        let img: HTMLCanvasElement;
-        if (tl >= ORE_BASE) img = oreSprite(tl - ORE_BASE, band, v);
-        else if (tl === ROCK) img = rockSprite(band, v);
-        else img = dirtSprite(band, v, tl === GRASS);
-        ctx.drawImage(img, dx, dy);
+        const px = (((tx % PATCH) + PATCH) % PATCH) * TS;
+        const py = (((ty % PATCH) + PATCH) % PATCH) * TS;
+        if (tl === ROCK) {
+          ctx.drawImage(rockPatch(band), px, py, TS, TS, dx, dy, TS, TS);
+        } else {
+          ctx.drawImage(dirtPatch(band), px, py, TS, TS, dx, dy, TS, TS);
+          if (tl === GRASS) ctx.drawImage(grassSprite(v), dx, dy);
+          if (tl >= ORE_BASE) ctx.drawImage(oreSprite(tl - ORE_BASE, v), dx, dy);
+        }
         // edge lighting only where dirt meets open space
         if (world.get(tx, ty - 1) === EMPTY) {
           ctx.fillStyle = "rgba(255,236,200,0.18)";
