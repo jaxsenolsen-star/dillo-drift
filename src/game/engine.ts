@@ -94,12 +94,17 @@ function dirtSprite(band: number, v: number, grass: boolean) {
     g.fillRect(x, y, s, s);
   }
   g.globalAlpha = 1;
-  // subtle inner bevel for depth
-  g.fillStyle = "rgba(255,255,255,0.07)";
-  g.fillRect(0, 0, TS, 2);
-  g.fillStyle = "rgba(0,0,0,0.22)";
-  g.fillRect(0, TS - 2, TS, 2);
-  g.fillRect(TS - 2, 0, 2, TS);
+  // organic clods instead of a tile-shaped bevel
+  for (let i = 0; i < 5; i++) {
+    const x = Math.floor(hash2(i + 70, v * 5 + band, 71) * (TS - 6));
+    const y = Math.floor(hash2(i + 80, v * 7 + band, 73) * (TS - 6));
+    const w = 3 + Math.floor(hash2(i + 90, v + band, 77) * 4);
+    g.fillStyle = hash2(i, v, 79) > 0.5 ? p.dark : p.light;
+    g.globalAlpha = 0.4;
+    g.fillRect(x, y, w, 2);
+    g.fillRect(x, y + 2, Math.max(2, w - 2), 2);
+  }
+  g.globalAlpha = 1;
   if (grass) {
     g.fillStyle = "#3f7f2b";
     g.fillRect(0, 0, TS, 7);
@@ -138,7 +143,7 @@ function rockSprite(band: number, v: number) {
     const y = Math.floor(hash2(i + 9, v, 12) * (TS - 3));
     g.fillRect(x, y, 2, 2);
   }
-  g.strokeStyle = "rgba(0,0,0,0.5)";
+  g.strokeStyle = "rgba(0,0,0,0.22)";
   g.lineWidth = 1;
   g.strokeRect(0.5, 0.5, TS - 1, TS - 1);
   spriteCache.set(key, c);
@@ -256,14 +261,14 @@ class World {
     const attempts = 7;
     for (let a = 0; a < attempts; a++) {
       const r = hash2(cx * 91 + a, cy * 57 + a * 13, s + 17);
-      if (r > 0.82) continue;
+      if (r > 0.88) continue;
       const ox = Math.floor(hash2(a, cx + cy * 7, s + 23) * CHUNK);
       const oy = Math.floor(hash2(a + 4, cx * 3 + cy, s + 29) * CHUNK);
       const ty = cy * CHUNK + oy;
       if (ty < 4) continue;
       const ore = pickOre(ty, hash2(a + 8, cx * 5 + cy * 11, s + 31));
       const idx = ORES.indexOf(ore);
-      const size = 3 + Math.floor(hash2(a + 12, cx + cy, s + 37) * 6);
+      const size = 6 + Math.floor(hash2(a + 12, cx + cy, s + 37) * 9);
       let px = ox;
       let py = oy;
       for (let b = 0; b < size; b++) {
@@ -745,6 +750,16 @@ export function createGame(
       ctx.fillRect(0, 0, W, H);
     }
 
+    // underground backdrop so caves read as shadowed space, not holes
+    if (surfaceY < H) {
+      const bg = BANDS[bandOf(Math.floor((oy + H / 2) / TS))]!;
+      ctx.fillStyle = bg.dark;
+      const top = Math.max(0, surfaceY);
+      ctx.fillRect(0, top, W, H - top);
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(0, top, W, H - top);
+    }
+
     const tx0 = Math.floor(ox / TS) - 1;
     const tx1 = Math.floor((ox + W) / TS) + 1;
     const ty0 = Math.floor(oy / TS) - 1;
@@ -757,7 +772,7 @@ export function createGame(
         if (tl === EMPTY) continue;
         const dx = tx * TS - ox;
         const dy = ty * TS - oy;
-        const v = Math.floor(hash2(tx, ty, 5) * 4);
+        const v = Math.floor(hash2(tx, ty, 5) * 8);
         if (tl === LAVA) {
           const glow = 0.6 + 0.4 * Math.sin(t * 3 + tx + ty);
           ctx.fillStyle = "#7a1e05";
@@ -780,6 +795,23 @@ export function createGame(
         else if (tl === ROCK) img = rockSprite(band, v);
         else img = dirtSprite(band, v, tl === GRASS);
         ctx.drawImage(img, dx, dy);
+        // edge lighting only where dirt meets open space
+        if (world.get(tx, ty - 1) === EMPTY) {
+          ctx.fillStyle = "rgba(255,236,200,0.18)";
+          ctx.fillRect(dx, dy, TS, 2);
+        }
+        if (world.get(tx, ty + 1) === EMPTY) {
+          ctx.fillStyle = "rgba(0,0,0,0.4)";
+          ctx.fillRect(dx, dy + TS - 3, TS, 3);
+        }
+        if (world.get(tx - 1, ty) === EMPTY) {
+          ctx.fillStyle = "rgba(0,0,0,0.25)";
+          ctx.fillRect(dx, dy, 2, TS);
+        }
+        if (world.get(tx + 1, ty) === EMPTY) {
+          ctx.fillStyle = "rgba(0,0,0,0.25)";
+          ctx.fillRect(dx + TS - 2, dy, 2, TS);
+        }
       }
     }
 
