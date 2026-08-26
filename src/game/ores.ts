@@ -193,8 +193,8 @@ export function pickOre(depth: number, rnd: number): Ore {
   const total = w.reduce((a, b) => a + b, 0);
   let t = rnd * total;
   for (let i = 0; i < w.length; i++) {
-    t -= w[i];
-    if (t <= 0) return ORES[i];
+    t -= w[i]!;
+    if (t <= 0) return ORES[i]!;
   }
-  return ORES[0];
+  return ORES[0]!;
 }

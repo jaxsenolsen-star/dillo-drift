@@ -80,7 +80,7 @@ function dirtSprite(band: number, v: number, grass: boolean) {
   if (hit) return hit;
   const c = make(TS, TS);
   const g = c.getContext("2d")!;
-  const p = BANDS[band];
+  const p = BANDS[band]!;
   g.fillStyle = p.base;
   g.fillRect(0, 0, TS, TS);
   // speckled texture
@@ -123,7 +123,7 @@ function rockSprite(band: number, v: number) {
   if (hit) return hit;
   const c = make(TS, TS);
   const g = c.getContext("2d")!;
-  const p = BANDS[band];
+  const p = BANDS[band]!;
   g.fillStyle = p.dark;
   g.fillRect(0, 0, TS, TS);
   g.fillStyle = "#6f7178";
@@ -182,7 +182,7 @@ function oreSprite(oreIdx: number, band: number, v: number) {
   const key = `o${oreIdx}_${band}_${v}`;
   const hit = spriteCache.get(key);
   if (hit) return hit;
-  const o = ORES[oreIdx];
+  const o = ORES[oreIdx]!;
   const c = make(TS, TS);
   const g = c.getContext("2d")!;
   g.drawImage(dirtSprite(band, v, false), 0, 0);
@@ -286,7 +286,7 @@ class World {
     const cx = Math.floor(tx / CHUNK);
     const cy = Math.floor(ty / CHUNK);
     const c = this.chunk(cx, cy);
-    return c[(ty - cy * CHUNK) * CHUNK + (tx - cx * CHUNK)];
+    return c[(ty - cy * CHUNK) * CHUNK + (tx - cx * CHUNK)]!;
   }
 
   set(tx: number, ty: number, v: number) {
@@ -304,7 +304,7 @@ const isSolid = (t: number) => t !== EMPTY && t !== LAVA;
 const tileHardness = (t: number) => {
   if (t === DIRT || t === GRASS) return 0;
   if (t === ROCK) return 2;
-  if (t >= ORE_BASE) return ORES[t - ORE_BASE].hardness;
+  if (t >= ORE_BASE) return ORES[t - ORE_BASE]!.hardness;
   return 99;
 };
 
@@ -481,7 +481,7 @@ export function createGame(
     const cx = tx * TS + TS / 2;
     const cy = ty * TS + TS / 2;
     if (t >= ORE_BASE) {
-      const o = ORES[t - ORE_BASE];
+      const o = ORES[t - ORE_BASE]!;
       const gain = Math.round(o.value * fortune);
       value += gain;
       collected[o.id] = (collected[o.id] ?? 0) + 1;
@@ -490,7 +490,7 @@ export function createGame(
       shake = Math.max(shake, 3);
       p.fuel = Math.min(fuelMax, p.fuel + 1.5);
     } else {
-      burst(cx, cy, 6, BANDS[band].light, 110);
+      burst(cx, cy, 6, BANDS[band]!.light, 110);
       if (t === ROCK) {
         burst(cx, cy, 6, "#b9bec7", 130);
         shake = Math.max(shake, 2);
@@ -575,7 +575,7 @@ export function createGame(
       for (let tx = ptx - rad; tx <= ptx + rad; tx++) {
         const t = world.get(tx, ty);
         if (t < ORE_BASE) continue;
-        if (ORES[t - ORE_BASE].hardness > drill) continue;
+        if (ORES[t - ORE_BASE]!.hardness > drill) continue;
         const dx = tx * TS + TS / 2 - p.x;
         const dy = ty * TS + TS / 2 - p.y;
         if (dx * dx + dy * dy <= magnetR * magnetR) hitTile(tx, ty, t);
@@ -647,7 +647,7 @@ export function createGame(
     camY += (p.y + 60 - camY) * 0.1;
 
     for (let i = particles.length - 1; i >= 0; i--) {
-      const q = particles[i];
+      const q = particles[i]!;
       q.vy += 700 * dt;
       q.x += q.vx * dt;
       q.y += q.vy * dt;
@@ -655,9 +655,10 @@ export function createGame(
       if (q.life <= 0) particles.splice(i, 1);
     }
     for (let i = popups.length - 1; i >= 0; i--) {
-      popups[i].y -= dt * 28;
-      popups[i].life -= dt;
-      if (popups[i].life <= 0) popups.splice(i, 1);
+      const u = popups[i]!;
+      u.y -= dt * 28;
+      u.life -= dt;
+      if (u.life <= 0) popups.splice(i, 1);
     }
   }
 
@@ -752,7 +753,7 @@ export function createGame(
     for (let ty = Math.max(0, ty0); ty <= ty1; ty++) {
       const band = bandOf(ty);
       for (let tx = tx0; tx <= tx1; tx++) {
-        const tl = world.get(tx, ty);
+        const tl = world.get(tx, ty)!;
         if (tl === EMPTY) continue;
         const dx = tx * TS - ox;
         const dy = ty * TS - oy;
